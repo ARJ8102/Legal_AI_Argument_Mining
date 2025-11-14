@@ -1,0 +1,7 @@
+This Agreement is made and entered into as of the 1st day of January, 2023, by and between Acme Corp., 
+a Delaware corporation ("Acme"), and John Doe, an independent contractor. Whereas, Acme desires to 
+retain the services of John Doe for software consulting, and John Doe agrees to perform such services 
+under the terms and conditions set forth herein. Now, therefore, in consideration of the mutual
+ covenants and promises contained herein, the parties agree as follows: John Doe shall deliver a 
+ working prototype within 60 days of this Agreement. Either party may terminate this Agreement with 15 days’ written notice. 
+All intellectual property developed under this Agreement shall be the sole property of Acme Corp.

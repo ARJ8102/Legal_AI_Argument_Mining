@@ -1,12 +1,44 @@
-# Python
+# Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# Virtual Environment
+# Environments
+env/
+venv/
+.venv/
 legal_ai/
+legal-ai/
+conda/
 
-# Output files
-*.txt
+# HuggingFace / transformers cache
+.cache/
+huggingface/
+transformers/
 
-# VSCode
+# spaCy model folders
+models/
+!models/README.md
+
+# Logs
+*.log
+
+# MongoDB dumps
+*.bson
+*.json
+
+# VS Code settings
 .vscode/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Large data
+data/
+pdf/
+*.pdf
+*.png
+*.jpg
+*.jpeg
