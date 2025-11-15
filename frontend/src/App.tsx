@@ -1,16 +1,22 @@
 import { useState } from "react";
 import axios from "axios";
+import { FaFilePdf, FaTag } from "react-icons/fa";
 
 function App() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      setError("Please select a PDF before uploading.");
+      return;
+    }
 
     setLoading(true);
     setResults(null);
+    setError(null);
 
     const formData = new FormData();
     formData.append("file", selectedFile);
@@ -24,91 +30,131 @@ function App() {
         }
       );
 
-      // Back-end sends: { status, filename, results }
-      setResults(response.data.results);
+      if (response.data.status === "error") {
+        setError(response.data.message);
+      } else {
+        setResults(response.data.results);
+      }
     } catch (err) {
       console.error(err);
-      alert("Error uploading PDF");
+      setError("Upload failed — check backend connection.");
     }
 
     setLoading(false);
   };
 
   return (
-    <div className="relative min-h-screen bg-gray-900 text-white p-10">
+    <div className="min-h-screen bg-[#0A0F1F] text-gray-200 p-10 font-sans">
 
-      {/* 🔥 FULLSCREEN LOADING OVERLAY */}
-      {loading && (
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-50">
-          <div className="w-16 h-16 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
-          <p className="mt-4 text-lg font-semibold">Processing PDF…</p>
-        </div>
-      )}
-
-      <h1 className="text-4xl font-bold mb-6 text-center">
-        Legal AI Document Analyzer
+      {/* HEADER */}
+      <h1 className="text-4xl font-bold mb-6 text-center text-white tracking-wide">
+        Legal AI · Document Analyzer
       </h1>
 
-      {/* Upload Section */}
-      <div
-        className={`bg-gray-800 p-6 rounded-xl shadow-lg max-w-xl mx-auto ${
-          loading ? "opacity-50 pointer-events-none" : ""
-        }`}
-      >
-        <input
-          type="file"
-          accept="application/pdf"
-          className="block mb-4"
-          onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-        />
+      {/* UPLOAD CARD */}
+      <div className="bg-[#131A2A] p-8 rounded-xl shadow-xl max-w-xl mx-auto border border-[#1f2a44]">
+        <label className="block mb-4 text-gray-300 font-medium">
+          Upload a PDF Document
+        </label>
+
+        <div className="flex items-center justify-center bg-[#0F1626] border border-gray-600 rounded-lg py-6 mb-4 cursor-pointer hover:border-gray-400 transition">
+          <input
+            type="file"
+            accept="application/pdf"
+            className="opacity-0 absolute h-20 w-80 cursor-pointer"
+            onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+          />
+          <div className="flex flex-col items-center">
+            <FaFilePdf size={34} className="text-red-500 mb-2" />
+            <p className="text-gray-400">
+              {selectedFile ? selectedFile.name : "Click to choose a PDF"}
+            </p>
+          </div>
+        </div>
 
         <button
           onClick={handleUpload}
           disabled={loading}
-          className="bg-blue-600 px-5 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-600"
+          className="w-full bg-[#D8232A] py-3 rounded-md text-white font-semibold text-lg hover:bg-red-700 disabled:bg-gray-600 transition"
         >
-          {loading ? "Processing..." : "Upload & Process"}
+          {loading ? "Analyzing..." : "Upload & Analyze"}
         </button>
       </div>
 
-      {/* Results Section */}
-{results && (
-  <div className="mt-10 bg-gray-800 p-6 rounded-xl shadow-xl max-w-4xl mx-auto">
-    <h2 className="text-2xl font-semibold mb-4">Results</h2>
-
-    {/* Entities */}
-    <h3 className="text-xl font-bold mt-4 mb-2">Named Entities</h3>
-    <div className="bg-gray-700 p-4 rounded-md overflow-auto max-h-60">
-      {!results.entities || results.entities.length === 0 ? (
-        <p>No entities found.</p>
-      ) : (
-        results.entities.map((e: any, i: number) => (
-          <p key={i} className="mb-1">
-            <span className="text-green-400">{e.entity_group}</span>
-            {": "}
-            {e.word}
-          </p>
-        ))
+      {/* ERROR MESSAGE */}
+      {error && (
+        <div className="max-w-xl mx-auto mt-6 p-4 bg-red-800/40 border border-red-600 rounded-lg text-red-300">
+          ⚠ {error}
+        </div>
       )}
-    </div>
 
-    {/* Arguments */}
-    <h3 className="text-xl font-bold mt-6 mb-2">Arguments</h3>
-    <div className="bg-gray-700 p-4 rounded-md overflow-auto max-h-80">
-      {!results.classifications || results.classifications.length === 0 ? (
-        <p>No argument classifications found.</p>
-      ) : (
-        results.classifications.map((c: any, i: number) => (
-          <div key={i} className="mb-3">
-            <p className="font-semibold">{c.sentence}</p>
-            <p className="text-blue-300">→ {c.label}</p>
+      {/* FULL SCREEN LOADING OVERLAY */}
+      {loading && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-red-500 border-opacity-75"></div>
+        </div>
+      )}
+
+      {/* RESULTS */}
+      {results && (
+        <div className="mt-12 max-w-5xl mx-auto space-y-10">
+
+          {/* ENTITIES SECTION */}
+          <div className="bg-[#131A2A] p-8 rounded-xl shadow-xl border border-[#1f2a44]">
+            <h2 className="text-2xl font-bold text-white mb-4">
+              Named Entities
+            </h2>
+
+            <div className="space-y-3 max-h-80 overflow-auto pr-2">
+              {!results.entities || results.entities.length === 0 ? (
+                <p className="text-gray-400 text-center">No entities detected.</p>
+              ) : (
+                results.entities.map((e: any, i: number) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between bg-[#0F1626] p-4 rounded-lg border border-gray-700 hover:border-gray-500 transition"
+                  >
+                    <div>
+                      <p className="text-lg font-semibold text-white">{e.word}</p>
+                      <p className="text-sm text-gray-400">Position: {e.start}–{e.end}</p>
+                    </div>
+
+                    <span className="px-3 py-1 text-sm bg-red-700/40 border border-red-600 rounded-md text-red-300 flex items-center gap-2">
+                      <FaTag /> {e.entity_group}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        ))
-      )}
-    </div>
-  </div>
-)}
 
+          {/* ARGUMENTS SECTION */}
+          <div className="bg-[#131A2A] p-8 rounded-xl shadow-xl border border-[#1f2a44]">
+            <h2 className="text-2xl font-bold text-white mb-4">
+              Argument Classification
+            </h2>
+
+            <div className="space-y-4 max-h-[500px] overflow-auto pr-2">
+              {!results.classifications ||
+              results.classifications.length === 0 ? (
+                <p className="text-gray-400 text-center">
+                  No argument classifications returned.
+                </p>
+              ) : (
+                results.classifications.map((c: any, i: number) => (
+                  <div
+                    key={i}
+                    className="bg-[#0F1626] p-5 rounded-lg border border-gray-700 hover:border-gray-500 transition"
+                  >
+                    <p className="text-white font-semibold mb-1">{c.sentence}</p>
+                    <p className="text-sm text-red-400">→ {c.label}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
