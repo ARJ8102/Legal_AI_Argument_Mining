@@ -27,3 +27,8 @@ def classify_sentences(doc_id):
         {"$set": {"sentences": classified_sentences}}
     )
     print(f"✅ Classified {len(classified_sentences)} sentences for document _id={doc_id}")
+
+
+def get_classified_sentences(doc_id):
+    doc = documents_collection.find_one({"_id": doc_id})
+    return doc.get("classified_sentences", [])
