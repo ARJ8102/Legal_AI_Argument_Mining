@@ -2,33 +2,26 @@ from pymongo import MongoClient
 
 client = MongoClient("mongodb://localhost:27017/")
 db = client["legal_pipeline"]
-documents_collection = db["documents"]
+sentences_collection = db["sentences"]
+classes_collection = db["classified_sentences"]
 
-# Dummy argument classifier
+
 def classify_sentences(doc_id):
-    doc = documents_collection.find_one({"_id": doc_id})
-    if not doc or "sentences" not in doc:
-        raise ValueError(f"No sentences found for document {doc_id}")
+    record = sentences_collection.find_one({"_id": doc_id})
+    sentences = record.get("sentences", []) if record else []
 
-    classified_sentences = []
-    for s in doc["sentences"]:
-        text = s["text"]
-        # Simple heuristic: first sentence = Premise, contains 'whereas' = Claim, 'therefore' = Conclusion
-        if "therefore" in text.lower():
-            role = "Conclusion"
-        elif "whereas" in text.lower():
-            role = "Claim"
-        else:
-            role = "Premise"
-        classified_sentences.append({"sentence_id": s["sentence_id"], "text": text, "role": role})
+    # Dummy classifier
+    classified = [{"sentence": s, "label": "UNKNOWN"} for s in sentences]
 
-    documents_collection.update_one(
+    classes_collection.update_one(
         {"_id": doc_id},
-        {"$set": {"sentences": classified_sentences}}
+        {"$set": {"classified": classified}},
+        upsert=True
     )
-    print(f"✅ Classified {len(classified_sentences)} sentences for document _id={doc_id}")
+
+    print(f"✅ Classified {len(classified)} sentences for document _id={doc_id}")
 
 
-def get_classified_sentences(doc_id):
-    doc = documents_collection.find_one({"_id": doc_id})
-    return doc.get("classified_sentences", [])
+def get_classifications(doc_id):
+    record = classes_collection.find_one({"_id": doc_id})
+    return record.get("classified", []) if record else []
