@@ -1,14 +1,34 @@
 import { Link } from "react-router-dom";
+import { useTheme } from "../context/ThemeContext";
+import { FaSun, FaMoon, FaFileUpload, FaList } from "react-icons/fa";
 
-export default function Navbar() {
+const Navbar = () => {
+  const { theme, toggleTheme } = useTheme();
+
   return (
-    <div className="bg-gray-900 text-white px-6 py-4 flex justify-between items-center shadow">
-      <h1 className="text-xl font-bold text-red-400">Legal AI</h1>
+    <nav className="w-full bg-gray-900 dark:bg-black px-6 py-4 shadow-md flex justify-between items-center">
+      <Link to="/" className="text-2xl font-bold text-white">
+        Legal AI
+      </Link>
 
-      <div className="flex gap-6">
-        <Link to="/" className="hover:text-red-300">Upload</Link>
-        <Link to="/cases" className="hover:text-red-300">Cases</Link>
+      <div className="flex items-center gap-6">
+        <Link to="/upload" className="text-gray-300 hover:text-white flex items-center gap-2">
+          <FaFileUpload /> Upload
+        </Link>
+
+        <Link to="/cases" className="text-gray-300 hover:text-white flex items-center gap-2">
+          <FaList /> Cases
+        </Link>
+
+        <button
+          onClick={toggleTheme}
+          className="text-gray-300 hover:text-white"
+        >
+          {theme === "light" ? <FaMoon size={18} /> : <FaSun size={18} />}
+        </button>
       </div>
-    </div>
+    </nav>
   );
-}
+};
+
+export default Navbar;
