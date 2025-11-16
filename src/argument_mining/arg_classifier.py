@@ -20,6 +20,7 @@ def classify_sentences(doc_id):
     )
 
     print(f"✅ Classified {len(classified)} sentences for document _id={doc_id}")
+    return classified
 
 
 def get_classifications(doc_id):

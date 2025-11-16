@@ -22,6 +22,7 @@ def split_sentences_for_doc(doc_id):
     )
 
     print(f"✅ Split {len(sentences)} sentences for document _id={doc_id}")
+    return sentences
 
 
 def get_sentences(doc_id):

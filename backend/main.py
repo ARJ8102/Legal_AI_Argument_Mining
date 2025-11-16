@@ -3,13 +3,36 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import sys
 
-sys.path.append(os.path.abspath(".."))
+# --- Add project root to Python path ---
+import os, sys
+BACKEND_DIR = os.path.dirname(__file__)
+ROOT_DIR = os.path.abspath(os.path.join(BACKEND_DIR, ".."))
+SRC_DIR = os.path.join(ROOT_DIR, "src")
 
-from run_pipeline import run_pipeline_for_pdf
+sys.path.append(ROOT_DIR)
+sys.path.append(SRC_DIR)
+sys.path.append(BACKEND_DIR)
 
+# --- Internal imports ---
+from routes.cases import router as cases_router
+from src.processing import pdf_parser
+from src.nlp import ner_extractor
+from src.argument_mining import sentence_splitter, arg_classifier
+
+
+# --- MongoDB ---
+from pymongo import MongoClient
+
+client = MongoClient("mongodb://localhost:27017/")
+db = client["legal_pipeline"]
+
+# --- FastAPI app setup ---
 app = FastAPI()
 
-# CORS fix
+# Attach routes for CRUD operations
+app.include_router(cases_router)
+
+# --- CORS ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,47 +41,64 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# Add project root to Python path
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(ROOT_DIR)
-
-from run_pipeline import run_pipeline_for_pdf
-from processing import pdf_parser
-from argument_mining import sentence_splitter, arg_classifier
-from nlp import ner_extractor
-
-
 @app.get("/")
 def home():
     return {"message": "Legal AI backend is running"}
 
 
+# ---------------------------------------------------------
+# PROCESS PDF ENDPOINT
+# ---------------------------------------------------------
 @app.post("/process_pdf")
 async def process_pdf(file: UploadFile = File(...)):
     try:
-        # Save uploaded file to backend/uploads folder
-        uploads_dir = os.path.join(ROOT_DIR, "uploads")
-        os.makedirs(uploads_dir, exist_ok=True)
+        # --- Save uploaded PDF ---
+        upload_dir = "uploads"
+        os.makedirs(upload_dir, exist_ok=True)
 
-        file_path = os.path.join(uploads_dir, file.filename)
+        file_path = os.path.join(upload_dir, file.filename)
         with open(file_path, "wb") as f:
             f.write(await file.read())
 
-        # Run pipeline
-        run_pipeline_for_pdf(file_path)
+        if not os.path.exists(file_path):
+            return {"status": "error", "message": "File not saved properly."}
 
-        doc_id = file.filename
+        # --- Generate doc ID ---
+        doc_id = file.filename.replace(".pdf", "")
 
-        # Gather results
-        output = {
-            "text": pdf_parser.get_raw_text(doc_id),
-            "entities": ner_extractor.get_entities(doc_id),
-            "sentences": sentence_splitter.get_sentences(doc_id),
-            "arguments": arg_classifier.get_classifications(doc_id)
+        # --- Extract PDF text ---
+        pdf_text = pdf_parser.parse_pdf(file_path, doc_id)
+
+        if not pdf_text or not isinstance(pdf_text, str) or not pdf_text.strip():
+            return {"status": "error", "message": "Failed to extract text from PDF"}
+
+        # --- NLP processing ---
+        entities = ner_extractor.extract_entities(pdf_text, doc_id)
+        sentences = sentence_splitter.split_sentences_for_doc(doc_id)
+        classifications = arg_classifier.classify_sentences(doc_id)
+
+        # --- SAVE EVERYTHING IN ONE COLLECTION ---
+        db.cases.update_one(
+            {"_id": doc_id},
+            {
+                "$set": {
+                    "filename": file.filename,
+                    "raw_text": pdf_text,
+                    "entities": entities,
+                    "sentences": sentences,
+                    "classifications": classifications
+                }
+            },
+            upsert=True
+        )
+
+        # --- FINAL SUCCESS RESPONSE ---
+        return {
+            "status": "success",
+            "filename": file.filename,
+            "doc_id": doc_id,
+            "saved": True
         }
-
-        return {"status": "success", "filename": file.filename, "results": output}
 
     except Exception as e:
         return {"status": "error", "message": str(e)}

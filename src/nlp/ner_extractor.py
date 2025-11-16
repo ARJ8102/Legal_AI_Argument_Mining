@@ -32,6 +32,7 @@ def extract_entities(text, doc_id):
     )
 
     print(f"✅ Extracted {len(cleaned_ents)} entities for {doc_id}")
+    return cleaned_ents
 
 
 def get_entities(doc_id):

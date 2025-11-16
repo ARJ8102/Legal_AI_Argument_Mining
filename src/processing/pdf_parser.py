@@ -52,6 +52,9 @@ def parse_pdf(pdf_path, doc_id):
 
     print(f"📌 OCR used on {ocr_used}/{len(extracted_pages)} pages")
     print(f"📦 Stored text in MongoDB\n")
+    
+    return final_text
+
 
 
 def get_raw_text(doc_id):
@@ -59,3 +62,6 @@ def get_raw_text(doc_id):
     if not doc or "raw_text" not in doc:
         return ""
     return doc["raw_text"]
+
+
+
