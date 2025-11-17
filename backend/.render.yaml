@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: legal-ai-backend
+    env: python
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash render_start.sh
