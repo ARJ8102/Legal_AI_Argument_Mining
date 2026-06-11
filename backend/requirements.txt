@@ -1,13 +1,15 @@
-fastapi
-uvicorn
-pydantic
-python-multipart
+fastapi==0.115.0
+uvicorn==0.30.6
+pydantic==2.9.2
+python-multipart==0.0.9
 
-pymongo
-pymupdf
-pillow
-pytesseract
-nltk
+pymongo==4.10.1
+pymupdf==1.24.10
+pillow==10.4.0
+pytesseract==0.3.13
+nltk==3.9.1
 
-transformers
+transformers==4.45.2
 torch
+huggingface-hub==0.25.2
+httpx==0.27.2
