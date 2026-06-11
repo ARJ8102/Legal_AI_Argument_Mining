@@ -3,21 +3,6 @@ import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { FaTag, FaQuoteRight } from "react-icons/fa";
 
-const entityColorMap: Record<string, string> = {
-  PERSON: "bg-emerald-700",
-  ORG: "bg-indigo-700",
-  LOC: "bg-blue-700",
-  GPE: "bg-orange-600",
-  LAW: "bg-fuchsia-700",
-};
-
-const labelColorMap: Record<string, string> = {
-  UNKNOWN: "bg-slate-700",
-  CLAIM: "bg-indigo-700",
-  PREMISE: "bg-emerald-700",
-  COUNTER: "bg-rose-700",
-};
-
 const CaseDetailsPage = () => {
   const { id } = useParams();
   const [data, setData] = useState<any>(null);
@@ -29,106 +14,111 @@ const CaseDetailsPage = () => {
     });
   }, [id]);
 
-  const filteredClassifications = useMemo(() => {
-    if (!data?.classifications) return [];
-    if (!search.trim()) return data.classifications;
+  const classifications = data?.classifications?.items || [];
+  const grouped = data?.classifications?.labels || {};
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return classifications;
     const q = search.toLowerCase();
-    return data.classifications.filter((c: any) =>
+    return classifications.filter((c: any) =>
       c.sentence.toLowerCase().includes(q)
     );
-  }, [data, search]);
+  }, [classifications, search]);
 
-  if (!data) {
-    return <p className="text-gray-300 text-center mt-10">Loading case details...</p>;
-  }
+  if (!data) return <p className="text-center text-slate-300 mt-10">Loading...</p>;
+
+  const sections = [
+    "Facts",
+    "Issue",
+    "Arguments of Petitioner",
+    "Arguments of Respondent",
+    "Reasoning",
+    "Decision",
+  ];
 
   return (
-    <div className="max-w-5xl mx-auto space-y-10">
-      {/* HEADER */}
-      <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl shadow-lg">
-        <h1 className="text-3xl font-bold text-white mb-2">{data.filename}</h1>
-        <p className="text-slate-400 text-sm">Case ID: {data.doc_id}</p>
+    <div className="max-w-6xl mx-auto space-y-8">
+      <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl">
+        <h1 className="text-3xl font-bold text-white">{data.filename}</h1>
+        <p className="text-slate-400 mt-2">Case ID: {data.doc_id}</p>
+
+        <div className="grid grid-cols-3 gap-4 mt-5">
+          <div className="bg-slate-950 p-4 rounded-xl">
+            <p className="text-slate-400 text-sm">Entities</p>
+            <p className="text-white text-2xl font-bold">{data.entities?.length || 0}</p>
+          </div>
+          <div className="bg-slate-950 p-4 rounded-xl">
+            <p className="text-slate-400 text-sm">Total Sentences</p>
+            <p className="text-white text-2xl font-bold">{data.classifications?.total_sentences || 0}</p>
+          </div>
+          <div className="bg-slate-950 p-4 rounded-xl">
+            <p className="text-slate-400 text-sm">Classified</p>
+            <p className="text-white text-2xl font-bold">{data.classifications?.classified_count || 0}</p>
+          </div>
+        </div>
       </div>
 
-      {/* ENTITIES */}
-      <section className="space-y-3">
-        <h2 className="text-2xl font-semibold text-white">Named Entities</h2>
-        <div className="bg-slate-900 border border-slate-700 p-5 rounded-2xl shadow-lg">
-          {(!data.entities || data.entities.length === 0) && (
-            <p className="text-slate-400 text-sm">No entities detected.</p>
-          )}
-
-          <div className="flex flex-wrap gap-2">
-            {data.entities?.map((e: any, i: number) => {
-              const cls =
-                entityColorMap[e.entity_group] || "bg-slate-700";
-              return (
-                <span
-                  key={i}
-                  className={`${cls} inline-flex items-center gap-1 text-xs px-3 py-1 rounded-full text-white`}
-                >
-                  <FaTag className="text-xs opacity-80" />
-                  <span className="font-semibold">{e.entity_group}</span>
-                  <span className="opacity-90">· {e.word}</span>
-                </span>
-              );
-            })}
-          </div>
+      <section>
+        <h2 className="text-2xl font-semibold text-white mb-3">Named Entities</h2>
+        <div className="bg-slate-900 border border-slate-700 p-5 rounded-2xl flex flex-wrap gap-2">
+          {data.entities?.map((e: any, i: number) => (
+            <span key={i} className="bg-indigo-700 text-white text-xs px-3 py-1 rounded-full">
+              <FaTag className="inline mr-1" />
+              {e.entity_group} · {e.word}
+            </span>
+          ))}
         </div>
       </section>
 
-      {/* ARGUMENT CLASSIFICATIONS */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-2xl font-semibold text-white">
-            Argument Classification
-          </h2>
+      <section>
+        <div className="flex justify-between mb-3">
+          <h2 className="text-2xl font-semibold text-white">Legal Rhetorical Role Analysis</h2>
           <input
-            type="text"
-            placeholder="Filter sentences..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            placeholder="Search sentences..."
+            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white"
           />
         </div>
 
-        <div className="bg-slate-900 border border-slate-700 p-5 rounded-2xl shadow-lg space-y-4 max-h-[550px] overflow-y-auto">
-          {filteredClassifications.length === 0 && (
-            <p className="text-slate-400 text-sm">No sentences match this filter.</p>
-          )}
-
-          {filteredClassifications.map((c: any, i: number) => {
-            const labelClass =
-              labelColorMap[c.label] || "bg-slate-700";
-
-            return (
-              <div
-                key={i}
-                className="p-4 rounded-xl bg-slate-950/70 border border-slate-700 hover:border-indigo-500 transition group"
-              >
-                <p className="font-medium text-slate-100">
-                  <FaQuoteRight className="inline mr-2 text-indigo-400 group-hover:text-indigo-300" />
-                  <span
-                    className={
-                      search
-                        ? "bg-yellow-200/30 text-yellow-100"
-                        : ""
-                    }
-                  >
-                    {c.sentence}
-                  </span>
+        {search ? (
+          <div className="bg-slate-900 border border-slate-700 p-5 rounded-2xl space-y-3">
+            {filtered.map((c: any, i: number) => (
+              <div key={i} className="bg-slate-950 p-4 rounded-xl border border-slate-700">
+                <p className="text-slate-100">
+                  <FaQuoteRight className="inline mr-2 text-indigo-400" />
+                  {c.sentence}
                 </p>
-                <div className="mt-2 flex items-center justify-between">
-                  <span
-                    className={`${labelClass} inline-block text-xs px-3 py-1 rounded-full text-white font-semibold`}
-                  >
-                    {c.label}
-                  </span>
+                <p className="text-xs text-indigo-300 mt-2">
+                  {c.label} · confidence {c.score}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {sections.map((label) => (
+              <div key={label} className="bg-slate-900 border border-slate-700 p-5 rounded-2xl">
+                <h3 className="text-xl font-bold text-white mb-3">
+                  {label} <span className="text-slate-400 text-sm">({grouped[label]?.length || 0})</span>
+                </h3>
+
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {(grouped[label] || []).slice(0, 15).map((c: any, i: number) => (
+                    <div key={i} className="bg-slate-950 p-4 rounded-xl border border-slate-700">
+                      <p className="text-slate-100">{c.sentence}</p>
+                      <p className="text-xs text-indigo-300 mt-2">Confidence: {c.score}</p>
+                    </div>
+                  ))}
+
+                  {!grouped[label]?.length && (
+                    <p className="text-slate-400 text-sm">No sentences found.</p>
+                  )}
                 </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
