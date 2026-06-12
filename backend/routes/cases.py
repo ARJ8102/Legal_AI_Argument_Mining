@@ -2,11 +2,13 @@ from fastapi import APIRouter, HTTPException
 from pymongo import MongoClient
 from bson import ObjectId
 from datetime import datetime
+import os
 
 router = APIRouter()
 
 # ---- Mongo Setup ----
-client = MongoClient("mongodb://localhost:27017/")
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
+client = MongoClient(MONGODB_URI)
 db = client["legal_pipeline"]
 cases_collection = db["cases"]
 

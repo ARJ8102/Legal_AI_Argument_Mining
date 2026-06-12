@@ -4,7 +4,11 @@ from pymongo import MongoClient
 import os
 
 # MongoDB setup
-client = MongoClient("mongodb://localhost:27017/")
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
+client = MongoClient(MONGODB_URI)
+
+
+
 db = client["legal_pipeline"]
 collection = db["documents"]
 

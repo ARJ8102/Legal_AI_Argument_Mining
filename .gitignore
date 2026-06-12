@@ -42,3 +42,5 @@ pdf/
 *.png
 *.jpg
 *.jpeg
+.env
+.env

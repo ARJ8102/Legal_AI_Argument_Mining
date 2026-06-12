@@ -3,7 +3,10 @@ nltk.download('punkt')
 from nltk.tokenize import sent_tokenize
 from pymongo import MongoClient
 
-client = MongoClient("mongodb://localhost:27017/")
+import os
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
+client = MongoClient(MONGODB_URI)
+
 db = client["legal_pipeline"]
 sentences_collection = db["sentences"]
 documents_collection = db["documents"]
