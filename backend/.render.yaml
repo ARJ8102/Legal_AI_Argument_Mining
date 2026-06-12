@@ -7,3 +7,9 @@ services:
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: bash render_start.sh
+    runtime: python3.11.9
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: HF_MODEL_REPO
+        sync: false
