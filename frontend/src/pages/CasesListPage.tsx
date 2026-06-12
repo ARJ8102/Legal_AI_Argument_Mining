@@ -15,7 +15,7 @@ const CasesListPage = () => {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    axios.get("http://127.0.0.1:8000/cases").then((res) => {
+    axios.get(`${import.meta.env.VITE_API_URL}/cases`).then((res) => {
       setCases(res.data.cases);
       setLoading(false);
     });
