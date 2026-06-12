@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/layout/applayout.tsx","./src/components/layout.tsx","./src/components/navbar.tsx","./src/context/themecontext.tsx","./src/pages/casedetailspage.tsx","./src/pages/caseslistpage.tsx","./src/pages/uploadpage.tsx"],"version":"5.9.3"}
