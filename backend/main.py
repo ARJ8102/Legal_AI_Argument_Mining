@@ -24,7 +24,7 @@ from src.argument_mining import sentence_splitter, arg_classifier
 from pymongo import MongoClient
 
 import os
-from dotenv import python_dotenv
+from dotenv import load_dotenv
 load_dotenv()
 client = MongoClient(os.getenv("MONGODB_URI", "mongodb://localhost:27017/"))
 db = client["legal_pipeline"]
