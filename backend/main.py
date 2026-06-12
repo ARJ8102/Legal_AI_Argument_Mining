@@ -23,7 +23,10 @@ from src.argument_mining import sentence_splitter, arg_classifier
 # --- MongoDB ---
 from pymongo import MongoClient
 
-client = MongoClient("mongodb://localhost:27017/")
+import os
+from dotenv import python_dotenv
+load_dotenv()
+client = MongoClient(os.getenv("MONGODB_URI", "mongodb://localhost:27017/"))
 db = client["legal_pipeline"]
 
 # --- FastAPI app setup ---
