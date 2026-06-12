@@ -34,7 +34,12 @@ app = FastAPI()
 
 # Attach routes for CRUD operations
 app.include_router(cases_router)
-
+@app.post("/process_pdf")
+async def process_pdf(file: UploadFile = File(...)):
+    return {
+        "message": "PDF received successfully",
+        "filename": file.filename
+    }
 # --- CORS ---
 app.add_middleware(
     CORSMiddleware,
