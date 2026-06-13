@@ -9,7 +9,7 @@ import pytesseract
 MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
 client = MongoClient(MONGODB_URI)
 db = client["legal_pipeline"]
-documents_collection = db["documents"]
+cases_collection = db["cases"]  # Fix: was "documents", should be "cases"
 
 MIN_CHAR_THRESHOLD = 40
 
@@ -27,42 +27,37 @@ def ocr_page(page):
 
 
 def parse_pdf(pdf_path, doc_id):
-    print(f"📄 Opening PDF: {pdf_path}")
+    print(f"Opening PDF: {pdf_path}")
     doc = fitz.open(pdf_path)
 
     extracted_pages = extract_text_from_pdf(pdf_path)
     final_text = ""
     ocr_used = 0
 
-    print("🔎 Checking pages for OCR fallback...")
     for i, ptext in enumerate(extracted_pages):
         page = doc[i]
-
         if len(ptext.strip()) < MIN_CHAR_THRESHOLD:
-            print(f"⚠️ Page {i+1}: Running OCR...")
+            print(f"Page {i+1}: Running OCR...")
             final_text += ocr_page(page) + "\n"
             ocr_used += 1
         else:
             final_text += ptext + "\n"
 
-    documents_collection.update_one(
+    # Fix: save to cases collection, not documents
+    cases_collection.update_one(
         {"_id": doc_id},
         {"$set": {"raw_text": final_text}},
         upsert=True
     )
 
-    print(f"📌 OCR used on {ocr_used}/{len(extracted_pages)} pages")
-    print(f"📦 Stored text in MongoDB\n")
-    
+    print(f"OCR used on {ocr_used}/{len(extracted_pages)} pages")
+    print(f"Stored text in MongoDB")
+
     return final_text
 
 
-
 def get_raw_text(doc_id):
-    doc = documents_collection.find_one({"_id": doc_id})
+    doc = cases_collection.find_one({"_id": doc_id})
     if not doc or "raw_text" not in doc:
         return ""
     return doc["raw_text"]
-
-
-
