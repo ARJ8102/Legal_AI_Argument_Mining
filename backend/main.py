@@ -1,46 +1,49 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from pymongo import MongoClient
+from dotenv import load_dotenv
+
 import os
 import sys
+import uuid
+import tempfile
+import traceback
 
-# --- Add project root to Python path ---
-import os, sys
-BACKEND_DIR = os.path.dirname(__file__)
-ROOT_DIR = os.path.abspath(os.path.join(BACKEND_DIR, ".."))
-SRC_DIR = os.path.join(ROOT_DIR, "src")
 
-sys.path.append(ROOT_DIR)
-sys.path.append(SRC_DIR)
+# ---------------------------------------------------------
+# PATH SETUP
+# ---------------------------------------------------------
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_SRC_DIR = os.path.join(BACKEND_DIR, "src")
+
 sys.path.append(BACKEND_DIR)
+sys.path.append(BACKEND_SRC_DIR)
 
-# --- Internal imports ---
+
+# ---------------------------------------------------------
+# ENV + MONGODB
+# ---------------------------------------------------------
+load_dotenv()
+
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
+client = MongoClient(MONGODB_URI)
+db = client["legal_pipeline"]
+
+
+# ---------------------------------------------------------
+# INTERNAL IMPORTS
+# ---------------------------------------------------------
 from routes.cases import router as cases_router
 from src.processing import pdf_parser
 from src.nlp import ner_extractor
 from src.argument_mining import sentence_splitter, arg_classifier
 
 
-# --- MongoDB ---
-from pymongo import MongoClient
+# ---------------------------------------------------------
+# FASTAPI APP
+# ---------------------------------------------------------
+app = FastAPI(title="Legal AI Backend", version="0.1.0")
 
-import os
-from dotenv import load_dotenv
-load_dotenv()
-client = MongoClient(os.getenv("MONGODB_URI", "mongodb://localhost:27017/"))
-db = client["legal_pipeline"]
-
-# --- FastAPI app setup ---
-app = FastAPI()
-
-# Attach routes for CRUD operations
-app.include_router(cases_router)
-@app.post("/process_pdf")
-async def process_pdf(file: UploadFile = File(...)):
-    return {
-        "message": "PDF received successfully",
-        "filename": file.filename
-    }
-# --- CORS ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -49,6 +52,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(cases_router)
+
+
+# ---------------------------------------------------------
+# HOME
+# ---------------------------------------------------------
 @app.get("/")
 def home():
     return {"message": "Legal AI backend is running"}
@@ -59,54 +68,76 @@ def home():
 # ---------------------------------------------------------
 @app.post("/process_pdf")
 async def process_pdf(file: UploadFile = File(...)):
+    tmp_path = None
+
     try:
-        # --- Save uploaded PDF ---
-        upload_dir = "uploads"
-        os.makedirs(upload_dir, exist_ok=True)
+        doc_id = str(uuid.uuid4())
+        original_filename = file.filename or f"{doc_id}.pdf"
 
-        file_path = os.path.join(upload_dir, file.filename)
-        with open(file_path, "wb") as f:
-            f.write(await file.read())
+        suffix = os.path.splitext(original_filename)[1]
+        if not suffix:
+            suffix = ".pdf"
 
-        if not os.path.exists(file_path):
-            return {"status": "error", "message": "File not saved properly."}
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
 
-        # --- Generate doc ID ---
-        doc_id = file.filename.replace(".pdf", "")
-
-        # --- Extract PDF text ---
-        pdf_text = pdf_parser.parse_pdf(file_path, doc_id)
+        pdf_text = pdf_parser.parse_pdf(tmp_path, doc_id)
 
         if not pdf_text or not isinstance(pdf_text, str) or not pdf_text.strip():
-            return {"status": "error", "message": "Failed to extract text from PDF"}
+            return {
+                "status": "error",
+                "message": "Failed to extract text from PDF",
+            }
 
-        # --- NLP processing ---
-        entities = ner_extractor.extract_entities(pdf_text, doc_id)
-        sentences = sentence_splitter.split_sentences_for_doc(doc_id)
-        classifications = arg_classifier.classify_sentences(doc_id)
+        entities = ner_extractor.extract_entities(pdf_text[:5000], doc_id)
 
-        # --- SAVE EVERYTHING IN ONE COLLECTION ---
+        sentences = []
+        classifications = []
+
+        try:
+            sentences = sentence_splitter.split_sentences_for_doc(doc_id)
+        except Exception as e:
+            print("Sentence splitter failed:", str(e))
+
+        try:
+            classifications = arg_classifier.classify_sentences(doc_id)
+        except Exception as e:
+            print("Argument classifier failed:", str(e))
+
         db.cases.update_one(
             {"_id": doc_id},
             {
                 "$set": {
-                    "filename": file.filename,
+                    "filename": original_filename,
                     "raw_text": pdf_text,
+                    "text_preview": pdf_text[:1000],
                     "entities": entities,
                     "sentences": sentences,
-                    "classifications": classifications
+                    "classifications": classifications,
                 }
             },
-            upsert=True
+            upsert=True,
         )
 
-        # --- FINAL SUCCESS RESPONSE ---
         return {
             "status": "success",
-            "filename": file.filename,
+            "message": "PDF processed successfully",
             "doc_id": doc_id,
-            "saved": True
+            "filename": original_filename,
+            "text_preview": pdf_text[:500],
+            "entities_count": len(entities),
+            "sentences_count": len(sentences) if sentences else 0,
+            "classifications_count": len(classifications) if classifications else 0,
         }
 
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        traceback.print_exc()
+        return {
+            "status": "error",
+            "message": str(e),
+        }
+
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
